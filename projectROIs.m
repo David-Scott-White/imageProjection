@@ -1,4 +1,4 @@
-function data = projectROIsNew(imageData)
+function data = projectROIs(imageData)
 % David S. White
 % dswhite2012@gmail.com
 % Updates:
@@ -12,19 +12,22 @@ function data = projectROIsNew(imageData)
 
 % output
 
+% to do: 
+% if no align masks, still need to refit to image stack with gaussian 
+% if two or more channels 
+
 % -------------------------------------------------------------------------
-
-% ensure imageData is loaded
+% load data
 if ~exist('imageData','var')
-    [file,path] = uigetfile('*.mat');
-    load([path,file]);
+    [loadFile,loadPath] = uigetfile('*.mat');
+    load([loadPath,loadFile]);
 end
-
+    
 %  create output structure; formated for DISCO v2.0.0
 data = struct;
 data.rois = [];
-data.names = imageData.info.channelNames;
 data.roiCounts = [];
+data.names = imageData.info.channelNames;
 
 numStacks = imageData.info.numStacks;
 numChannels = imageData.info.numChannels;
@@ -49,23 +52,30 @@ for i = 1:numStacks
     end
     
     % create or load image mask; background subtraction built in
+    % need option for manually creating image mask
     if imageData.masks.createMask
         maskChannel = imageData.masks.maskChannel;
-        % temp until function edit
-        imageMask = createMask(imageStacks{maskChannel,1},[],1);
         
-        % Unsupportd bit depth error trying to load from saving here..
-        % save the mask image
-        %maskFile = fullfile(imageData.stacks.path{maskChannel},...
-        %    imageData.stacks.files{maskChannel}{i,1});
-        % unit16?
-        %imwrite(imageMask,[maskFile(1:end-4),'_mask.tif'], 'Compression', 'none','WriteMode', "append");
-        %
+        % temp until function edit
+        % create mask needs to be auto and manual 
+        % in both cases, need to save the new as uint16 tif
+        disp('Creating Image Mask...')
+        imageMask = createMask(imageStacks{maskChannel,1},[],1);
+        maskFile = fullfile(imageData.stacks.path{maskChannel},...
+            imageData.stacks.files{maskChannel}{i,1});
+        maskName = [maskFile(1:end-4),'_mask.tif'];
+        disp(['Saving Mask: ', newline, maskName]);
+        imwrite(uint16(imageMask), maskName, 'Compression', 'none','WriteMode', "append");
+        
     else
         imageMask = loadTiffStack(fullfile(imageData.masks.path,imageData.masks.files{i}));
     end
     
     % perform background substraction
+    % currently not recommended to use this, the SNR is actually lower 
+    % havent tried this again with the new code for projecting image
+    % pixels..
+    % should check with just bleach step data
     for n=1:numChannels
         if imageData.background.applyToChannels(n)
             disp('Subtracting Background...')
@@ -76,16 +86,10 @@ for i = 1:numStacks
         end
     end
     
-    % now find rois in image mask
+    % now find rois in image mask [fitting to gaussian not super useful here]
     imageROIs = findRoisInImageMask(imageMask,imageData.roiParameters.minArea,...
         imageData.roiParameters.minSpacing,1);
     numROIs = size(imageROIs,1);
-    % fit to gaussian
-    gaussROIs = fitRoisTo2dGaussians(imageAlign{1}, imageROIs, [4,4], 0, 0);
-    for r = 1:numROIs
-        imageROIs(r,1).Centroid = gaussROIs(r).Center;
-    end
-    
     
     % duplicate structure for each channel
     for c = 2:numChannels
@@ -100,12 +104,17 @@ for i = 1:numStacks
         toAlign(maskChannel) = [];
         % align images using the cpselect function. 2 images at a time.
         for c = 1:length(toAlign) % can write option to preselect points
-            switch alignOption
+            switch imageData.align.method
                 case 'manual'
                     [movingPoints,fixedPoints] = cpselect(mat2gray(imageAlign{toAlign(c),1}),...
                         mat2gray(imageAlign{maskChannel,1}),'Wait',true);
+                    % center the points? 
+                    
+                    
+                    
                     % determine geometric transform between points
                     tform = fitgeotrans(movingPoints,fixedPoints,'NonreflectiveSimilarity'); 
+                
                 case 'auto'
                     [optimizer, metric] = imregconfig('multimodal');
                     tform = imregtform(imageAlign{maskChannel,1},...
@@ -120,19 +129,22 @@ for i = 1:numStacks
             end
             % currently refine to alignment image rather than mean of stack
             % need to update this function...
-            gaussROIs = fitRoisTo2dGaussians( ...
-                imageAlign{toAlign(c),1}, imageROIs(:,2), [4,4], 0, 0);
-            % store Center as entroid
+            gaussArea= round(imageData.roiParameters.gaussRefineArea^0.5); 
+            fitTol = imageData.roiParameters.gaussFitTol; 
+            gaussROIs = fitRoisTo2dGaussians(imageAlign{toAlign(c),1},...
+                imageROIs(:,2), [gaussArea, gaussArea], fitTol, 0);
+            % store Center as centroid [new to edit fitRoisTo2DGaussians]
             for r = 1:numROIs
                 imageROIs(r,toAlign(c)).Centroid = gaussROIs(r).Center;
             end
             % lets compare
-            figure
-            imshow(imageAlign{toAlign(c),1},[]); hold on
-            centroids = vertcat(imageROIs(:,1).Centroid); % old
-            plot(centroids(:,1), centroids(:,2), 'r+');
-            centroids = vertcat(imageROIs(:,2).Centroid); % new
-            plot(centroids(:,1), centroids(:,2), 'b+');
+            % should have option to change input values to refit if needed
+            %figure
+            %imshow(imageAlign{toAlign(c),1},[]); hold on
+            %centroids = vertcat(imageROIs(:,1).Centroid); % old
+            %plot(centroids(:,1), centroids(:,2), 'r+');
+            %centroids = vertcat(imageROIs(:,2).Centroid); % new
+            %plot(centroids(:,1), centroids(:,2), 'b+');
         end
         
     elseif ~imageData.align.alignImages & numChannels > 1
@@ -164,6 +176,7 @@ for i = 1:numStacks
     numROIs = size(imageROIs,1);
     
     % remake bounding box at center
+    % needs updating 
     for q = 1:3
         figure
         imshow(imageAlign{q},[]); hold on
@@ -181,6 +194,7 @@ for i = 1:numStacks
 
         
     % average across all pixels per bound box to make intenstiy time series
+    % should writing this as a funtion 
     for c = 1:numChannels
         numFrames = size(imageStacks{c},3);
         wb = waitbar(0,'Projecting ROIs.');
@@ -217,13 +231,16 @@ for i = 1:numStacks
             % roi info
             rois(n,c).image.centroid = imageROIs(n,c).Centroid;
             rois(n,c).image.pixels = imageROIs(n,c).pixels;
-            % rois(n,c).image.pixelIndices = imageROIs(n,c).pixelIndices;
-            % timeSeries
             rois(n,c).time_series = imageROIs(n,c).time_series;
         end
     end
     % concat
-    data.rois = [];
     data.rois = [data.rois; rois];
     data.roiCounts =  [data.roiCounts; numROIs];
+end
+
+% save the data 
+[saveFile, savePath] = uiputfile('*.mat','Save Data', loadPath);
+save([savePath,saveFile], 'data');
+
 end
