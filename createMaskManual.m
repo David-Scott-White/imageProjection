@@ -1,51 +1,49 @@
-function mask = createMaskManual(filePath, imageStack); 
-%% manually make an image mask 
-% David White
-% dswhite2012gmail.com 
-% updated: 
+function maskMaker(); 
+%% Mask Maker App (uicontrols)
+% Author: David White
+% Contact: dswhite2012gmail.com 
+% License: GPLv3.0
+% Updated: 
 % 2019-12-05
 
+% -------------------------------------------------------------------------
+% Init empty maskData structure; 
+% -------------------------------------------------------------------------
+maskData = struct; 
+maskData.file = 'this is just a demo to see if it works'; 
+maskData.path = []; 
+maskData.imageStack = []; 
+maskData.imageMask = []; 
+maskData.imageMean = []; 
 
-% if ~exist('filePath','var')
-%     [loadFile,loadPath] = uigetfile('*.tif'); 
-%     filePath = [loadPath,loadFile]; 
-%     imageStack = loadTiffStack([filePath]); 
-% end
+% -------------------------------------------------------------------------
+% Draw the Figure
+% -------------------------------------------------------------------------
+% Make Figure; 
+mmGUI = figure('Name', 'Mask Maker', 'NumberTitle','off','MenuBar',...
+    'None', 'units', 'normalized','Position',[0.2,0.75,0.6,0.6]);
 
-% init maskData structure; will be updated with callback
-maskData = struct;
-%maskData.filePath = [filePath]; 
-%maskData.imageStack = imageStack; 
+% UI menu
+uiMenu = uimenu(mmGUI,'Text','File');
+uiMenu_load = uimenu(uiMenu,'Text','Load Data');
+uiMenu_load = uimenu(uiMenu,'Text','Save Data');
+uiMenu_zap = uimenu(uiMenu,'Text','ZAP Home','Separator','on');
+% Current File Loaded
+imageText1 = uicontrol(mmGUI,'Style','text','units','normalized','Position',[.02 .90, .05, .04],...
+    'String','Image: ','HorizontalAlignment','left','FontName','Helvetica','FontSize',12);
+imageText2 = uicontrol(mmGUI,'Style','text','units','normalized','Position',[.07 .90, .4, .04],...
+    'String',maskData.file,'HorizontalAlignment','left','FontName','Helvetica','FontSize',12,...
+    'Background','w', 'Callback',@callback_imageText2);
+% Image Panel
+pImage = uipanel(mmGUI,'Title','Image Properties','FontSize',12,'units','normalized',...
+    'Position', [.02,.52,.45,.35]);
 
-% make figure; 
-gui = figure('Name', 'Manual Mask Creation', 'NumberTitle','off'); 
+bgMask = uibuttongroup(mmGUI,'Title','Mask Generation','Fontname','Helvetica',...
+    'FontSize',12,'units','normalized','Position',[.3, .68, .15, .15]);
+r1 = uicontrol(bgMask,'Style','radiobutton','String','Manual','units',...
+    'normalized','Position',[0.05, .6, .5, .2],'FontName','Helvetica','FontSize',12)
+r2 = uicontrol(bgMask,'Style','radiobutton','String','Auto','units',...
+    'normalized','Position',[0.05, .3, .5, .2],'FontName','Helvetica','FontSize',12)
 
-% Load data text button
-button_loadImage = uicontrol(gui,'Style','pushbutton','Position',[20 390 100 25],'units', 'normalized',...
-    'String','Load Data','HorizontalAlignment','left','FontName','Helvetica','FontSize',12,...
-    'Callback', @loadImage_callback);
-                      
-
-text_filePath = uicontrol(gui,'Style','edit','Position',[130 390 150 25],'units', 'normalized',...
-    'String','Load Data','HorizontalAlignment','left','FontName','Helvetica','FontSize',12,...
-    'Callback', @loadImage_callback);
-
-% current file path 
-text_filePath = uicontrol(gui,'Style','edit','Position',[20 390 150 20],...
-                           'String','Load Data','HorizontalAlignment','left',...
-                           'FontName','Helvetica','FontSize',12, 'Callback', @loadImage_callback);
-
-
-
-     % call backs                  
-    function [gui, maskData] = loadImage_callback(gui, event, maskData)
-        [file,path] = uigetfile('*.tif'); 
-        maskData.filePath = [path,file]; 
-        maskData.originalImage = loadTiffStack([path,file]); 
-    end
-
-    function [gui, maskData] = filePah_callback(gui, event, maskData)
-        gui.text_filePath.value = 'woah'
-    end
 
 end
