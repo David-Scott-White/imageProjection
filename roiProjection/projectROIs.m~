@@ -24,8 +24,6 @@ function data = projectROIs(imageData)
 if ~exist('imageData','var')
     [loadFile,loadPath] = uigetfile('*.mat');
     load([loadPath,loadFile]);
-else
-    loadPath = imageData.info.filePath;
 end
     
 %  create output structure; formated for DISCO v2.0.0
