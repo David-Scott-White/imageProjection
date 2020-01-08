@@ -20,14 +20,6 @@ function data = projectROIs(imageData)
 % adatped from findandPojectRois.m by Marcel P. Goldschen0-Ohm. 
 
 % -------------------------------------------------------------------------
-% load data
-if ~exist('imageData','var')
-    [loadFile,loadPath] = uigetfile('*.mat');
-    load([loadPath,loadFile]);
-else
-    loadPath = imageData.info.filePath;
-end
-    
 %  create output structure; formated for DISCO v2.0.0
 data = struct;
 data.rois = [];
@@ -71,7 +63,6 @@ for i = 1:numStacks
         maskName = [maskFile(1:end-4),'_mask.tif'];
         disp(['Saving Mask: ', newline, maskName]);
         imwrite(uint16(imageMask), maskName, 'Compression', 'none','WriteMode', "append");
-        
     else
         imageMask = loadTiffStack(fullfile(imageData.masks.path,imageData.masks.files{i}));
     end
@@ -142,14 +133,6 @@ for i = 1:numStacks
             for r = 1:numROIs
                 imageROIs(r,toAlign(c)).Centroid = gaussROIs(r).Center;
             end
-            % lets compare
-            % should have option to change input values to refit if needed
-            %figure
-            %imshow(imageAlign{toAlign(c),1},[]); hold on
-            %centroids = vertcat(imageROIs(:,1).Centroid); % old
-            %plot(centroids(:,1), centroids(:,2), 'r+');
-            %centroids = vertcat(imageROIs(:,2).Centroid); % new
-            %plot(centroids(:,1), centroids(:,2), 'b+');
         end
         
     elseif ~imageData.align.alignImages & numChannels > 1
@@ -163,8 +146,8 @@ for i = 1:numStacks
     end
     
     % adjust pixels based on radius around the centroid.
-    imageWidth =size(imageStacks{i},1);
-    imageHeight = size(imageStacks{i},1);
+    imageWidth =size(imageStacks{1});
+    imageHeight = size(imageStacks{1},1);
     keepROIs = ones(numROIs,1); % only keep rois within image bounds
     for c=1:numChannels
         for n = 1:numROIs
@@ -182,14 +165,13 @@ for i = 1:numStacks
     
     % remake bounding box at center
     % needs updating 
-    for q = 1:2
+    for q = 1:numChannels
         figure
         imshow(imageAlign{q},[]); hold on
         for r = 1:numROIs
             centroid = imageROIs(r,q).Centroid; 
-            [pixels,bb] = adjustPixels(centroid,3,512,512);
-            imageROIs(r,q).pixels = pixels; 
-            imageROIs(r,q).boundingBox  = bb;
+            [imageROIs(r,q).pixels,imageROIs(r,q).boundingBox] ...
+                = adjustPixels(centroid,3,512,512);
             plot(centroid(1),centroid(2),'b+');
             rectangle('Position',bb,'EdgeColor','r');
         end
@@ -203,12 +185,11 @@ for i = 1:numStacks
         wb = waitbar(0,'Projecting ROIs.');
         for n = 1:numROIs
             imageROIs(n,c).time_series = zeros(numFrames,1);
-            pixels = imageROIs(n,c).pixels;
-            numPixels = size(pixels,1);
+            numPixels = size(imageROIs(n,c).pixels,1);
             if numPixels > 0
                 for j = 1:numPixels
-                    col = pixels(j,1);
-                    row = pixels(j,2);
+                    col = imageROIs(n,c).pixels(j,1);
+                    row = imageROIs(n,c).pixels(j,2);
                     imageROIs(n,c).time_series = imageROIs(n,c).time_series + double(squeeze(imageStacks{c}(row,col,:)));
                 end
                 imageROIs(n,c).time_series = imageROIs(n,c).time_series./numPixels;
@@ -229,8 +210,6 @@ for i = 1:numStacks
             rois(n,c).image.frameRateHz = imageData.info.frameRateHz;
             rois(n,c).image.size = size(imageStacks{c}(:,:,1));
             
-            % rois(n,c).image.roiImage = crop();
-            
             % roi info
             rois(n,c).image.centroid = imageROIs(n,c).Centroid;
             rois(n,c).image.pixels = imageROIs(n,c).pixels;
@@ -243,7 +222,7 @@ for i = 1:numStacks
 end
 
 % save the data 
-[saveFile, savePath] = uiputfile('*.mat','Save Data', loadPath);
+[saveFile, savePath] = uiputfile('*.mat','Save Data', imageData.info.filePath{1});
 save([savePath,saveFile], 'data');
 
 end

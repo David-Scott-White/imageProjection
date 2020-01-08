@@ -8,14 +8,18 @@ function zap();
 
 % updates: 
 % 2019-12-10 DSW wrote the figure
-
-% To Do:
-% should normalize the position - done. DSW 2019-12-12
+% 2020-01-07 DSW launches in center at specified size
 
 % -------------------------------------------------------------------------
 % launch the ZAP app
+appWidth = 250;  % pixels
+appHeight = 400; % pixels
+screenSize = get(0,'ScreenSize'); % in pixels
+centerX = round(screenSize(3)/2 - appWidth/2);
+centerY = round(screenSize(4)/2 - appHeight/2);
+% launch app in center with specified size
 zapApp = figure('Name', 'ZAP', 'NumberTitle','off','MenuBar','None',...
-    'units','normalized', 'Position',[0.4,0.3,0.20,0.45],'Resize','off');
+    'units','pixels', 'Position',[centerX,centerY,appWidth,appHeight],'Resize','off');
 
 % Welcome Text
 welcomeText1 = uicontrol(zapApp,...
@@ -108,7 +112,7 @@ closingText2 = uicontrol(zapApp,...
     'FontName','Helvetica',...
     'FontSize',10);
 
-% Callbacks.
+% Callbacks for launching each module. Each is a seperate App
     function launch_maskMaker(obj,event)
         close(findobj('Name','ZAP'));
         maskMaker;
