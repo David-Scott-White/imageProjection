@@ -67,24 +67,9 @@ for i = 1:numStacks
         imageMask = loadTiffStack(fullfile(imageData.masks.path,imageData.masks.files{i}));
     end
     
-    % perform background substraction
-    % currently not recommended to use this, the SNR is actually lower 
-    % havent tried this again with the new code for projecting image
-    % pixels..
-    % should check with just bleach step data
-    for n=1:numChannels
-        if imageData.background.applyToChannels(n)
-            disp('Subtracting Background...')
-            % imageStacks{n,1} = subtractBackground(imageStacks{n,1},imageData.background.diskRadius);
-            imageStacks{n,1} = subtractBackground(imageStacks{n,1},2);
-            disp('Background Subtraction Completed.')
-            %imshow(mean(imageStacks{n,1}(:,:,1:10),3),[])
-        end
-    end
-    
     % now find rois in image mask [fitting to gaussian not super useful here]
     imageROIs = findRoisInImageMask(imageMask,imageData.roiParameters.minArea,...
-        imageData.roiParameters.minSpacing,1);
+        imageData.roiParameters.minSpacing,0);
     numROIs = size(imageROIs,1);
     
     % duplicate structure for each channel
@@ -105,8 +90,6 @@ for i = 1:numStacks
                     [movingPoints,fixedPoints] = cpselect(mat2gray(imageAlign{toAlign(c),1}),...
                         mat2gray(imageAlign{maskChannel,1}),'Wait',true);
                     % center the points? 
-                    
-                    
                     
                     % determine geometric transform between points
                     tform = fitgeotrans(movingPoints,fixedPoints,'NonreflectiveSimilarity'); 
@@ -146,7 +129,7 @@ for i = 1:numStacks
     end
     
     % adjust pixels based on radius around the centroid.
-    imageWidth =size(imageStacks{1});
+    imageWidth =size(imageStacks{1},1);
     imageHeight = size(imageStacks{1},1);
     keepROIs = ones(numROIs,1); % only keep rois within image bounds
     for c=1:numChannels
@@ -164,20 +147,71 @@ for i = 1:numStacks
     numROIs = size(imageROIs,1);
     
     % remake bounding box at center
-    % needs updating 
+    % needs updating
+    removeROI = [];
+    radius = imageData.roiParameters.roiRadius; 
     for q = 1:numChannels
-        figure
-        imshow(imageAlign{q},[]); hold on
         for r = 1:numROIs
             centroid = imageROIs(r,q).Centroid; 
             [imageROIs(r,q).pixels,imageROIs(r,q).boundingBox] ...
-                = adjustPixels(centroid,3,512,512);
-            plot(centroid(1),centroid(2),'b+');
-            rectangle('Position',bb,'EdgeColor','r');
+                = adjustPixels(centroid,radius,512,512);
+            outOfBounds1 = sum(sum(imageROIs(r,q).pixels > 512));
+            outOfBounds2 = sum(sum(imageROIs(r,q).pixels < 1));
+            if outOfBounds1 | outOfBounds2
+                removeROI = [removeROI;r]; 
+            end
         end
     end
-
+    imageROIs(removeROI,:)=[];
+    numROIs = size(imageROIs,1);
         
+    % for each roi, check circularity
+    threshold = 0.5;
+    removeROI = [];
+    for q = 1:numChannels
+        stopFrame = 100;
+        if size(imageStacks{q},3) < 100
+            stopFrame = size(imageStacks{maskChannel},3)
+        end
+        muImage = mean(imageStacks{q}(:,:,1:stopFrame),3);
+        muImage = mat2gray(subtractBackground(muImage,3));
+        if q == maskChannel
+            figure;
+            imshow(muImage,[]); hold on
+        end
+        for n = 1:numROIs
+            bb = imageROIs(n,q).boundingBox;
+            cropped =imcrop(muImage,bb);
+            imageROIs(n,q).cropped = cropped;
+            if q == maskChannel
+                %                 %muImgeMask = createMask(cropped,[],0);
+                %                 minValue = min(min(cropped));
+                %                 maxValue = max(max(cropped));
+                %                 normCropped = (cropped-minValue)./(maxValue-minValue);
+                %                 muImageMask = normCropped > threshold;
+                %                 roi = regionprops(muImageMask,'Circularity','Orientation');
+                %                 if length(roi) > 1
+                %                     removeROI = [removeROI;n];
+                %                     rectangle('Position',imageROIs(n,maskChannel).boundingBox,'EdgeColor','w'); hold on
+                %                 elseif ~sum(abs(roi.Orientation) == [0,45,90])
+                %                     removeROI = [removeROI;n];
+                %                     rectangle('Position',imageROIs(n,maskChannel).boundingBox,'EdgeColor','w'); hold on
+                %                 elseif isinf(roi.Circularity)
+                %                     removeROI = [removeROI;n]
+                %                     rectangle('Position',imageROIs(n,maskChannel).boundingBox,'EdgeColor','g'); hold on
+                %                 else
+                plot(imageROIs(n,maskChannel).Centroid(1),imageROIs(n,maskChannel).Centroid(2),'b+'); hold on
+                rectangle('Position',imageROIs(n,maskChannel).boundingBox,'EdgeColor','r'); hold on
+                text(imageROIs(n,maskChannel).Centroid(1)+2,imageROIs(n,maskChannel).Centroid(2)+2, num2str(n), 'Fontsize', 8,...
+                    'color','w'); hold on
+                %
+            end
+            %             end
+        end
+    end
+    % imageROIs(removeROI,:) = [];
+   % numROIs = size(imageROIs,1);
+    
     % average across all pixels per bound box to make intenstiy time series
     % should writing this as a funtion 
     for c = 1:numChannels
@@ -209,6 +243,7 @@ for i = 1:numStacks
             rois(n,c).image.file = imageData.stacks.files{c}{i,1};
             rois(n,c).image.frameRateHz = imageData.info.frameRateHz;
             rois(n,c).image.size = size(imageStacks{c}(:,:,1));
+            rois(n,c).image.cropped =  imageROIs(n,c).cropped;
             
             % roi info
             rois(n,c).image.centroid = imageROIs(n,c).Centroid;
