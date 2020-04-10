@@ -131,20 +131,20 @@ for i = 1:numStacks
     % adjust pixels based on radius around the centroid.
     imageWidth =size(imageStacks{1},1);
     imageHeight = size(imageStacks{1},1);
-    keepROIs = ones(numROIs,1); % only keep rois within image bounds
-    for c=1:numChannels
-        for n = 1:numROIs
-            imageROIs(n,c).radius = imageData.roiParameters.roiRadius;
-            [imageROIs(n,c).pixels, imageROIs(n,c).pixelIndices] = ...
-                findRoiPixels(imageROIs(n,c).Centroid, imageROIs(n,c).radius, imageWidth, imageHeight);
-            % if pixels are empty, remove the roi
-            if isempty(imageROIs(n,c).pixels)
-                keepROIs(n) = 0;
-            end
-        end
-    end
-    imageROIs = imageROIs(find(keepROIs>0),:);
-    numROIs = size(imageROIs,1);
+%     keepROIs = ones(numROIs,1); % only keep rois within image bounds
+%     for c=1:numChannels
+%         for n = 1:numROIs
+%             imageROIs(n,c).radius = imageData.roiParameters.roiRadius;
+%             [imageROIs(n,c).pixels, imageROIs(n,c).pixelIndices] = ...
+%                 findRoiPixels(imageROIs(n,c).Centroid, imageROIs(n,c).radius, imageWidth, imageHeight);
+%             % if pixels are empty, remove the roi
+%             if isempty(imageROIs(n,c).pixels)
+%                 keepROIs(n) = 0;
+%             end
+%         end
+%     end
+%     imageROIs = imageROIs(find(keepROIs>0),:);
+%     numROIs = size(imageROIs,1);
     
     % remake bounding box at center
     % needs updating
