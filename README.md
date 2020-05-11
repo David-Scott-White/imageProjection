@@ -1,14 +1,27 @@
 # ZMW Analysis Platform (ZAP)
-Matlab build of an analysis platform for single-moleucle imaging in zero-mode waveguides (ZMWs). This repository integrates a variety of software written during the course of my PhD work at the University of Wisconsin Madison. Primary features of the repository include: 
 
-* ** image mask creator **
-** create thresholded image masks to localize single-molecules in TIFF images 
+## This work is under regular development and is not yet completed!
 
-* image projection 
-** create time-series at each localized single-molecule over a stack of TIFF images
+### Overview
 
-* Time Series Idealization 
-** Integration of my DISC algorithm (
+Matlab build of an analysis platform and GUI for single-molecule imaging experiments of ligand binding using zero-mode waveguides (ZMWs). This repository integrates a variety of software written during my PhD work at the University of Wisconsin Madison. Primary features of the platform (will) include: 
 
-# imageProjection
-update roiProjection for ZMW/ TIRF imaging. Work in Progress
+* **Image Mask Creator**
+    * create thresholded image masks to localize single-molecules in TIFF images 
+
+
+* **Time Series Creator**
+    * create time-series of intensity values at each localized single-molecule over a stack of TIFF images
+    
+    
+* **Time Series Idealization**
+    * integration of my recently published [DISC algorithm](https://elifesciences.org/articles/53357) for unsupervised identification of states and transitions in a given time series using top-down machine learning. 
+    * DISC can also be found at: https://github.com/ChandaLab/DISC
+    
+    
+* **Analysis**
+    * General analysis of idealized time series including dwell time analysis, state occupancy analysis, bleach-step analysis, and exporting to QuB for more advanced hidden Markov modeling. 
+    
+    
+### Acknowledgments 
+This project would not be possible without the support of both Dr. Baron Chanda and Dr. Randall H. Goldsmith at UW-Madison. I also thank Dr. Marcel Goldschen-Ohm and Owen Rafferty for contributing to early code. My thesis work was supported by the NIH grants to B.C (NS-101723, NS-081320, and NS-081293), D.S.W (T32 fellowship GM007507) and R.H.G. (GM127957).
