@@ -1,6 +1,6 @@
 # ZMW Analysis Platform (ZAP)
 
-## This work is under regular development and is not yet completed!
+## DEVELOPMENT ON THIS PLATFORM HAS CEASED. USE AT YOUR OWN RISK. RECOMMENDED SOFTWARE AT: https://github.com/David-Scott-White/cosmos-toolbox
 
 ### Overview
 
